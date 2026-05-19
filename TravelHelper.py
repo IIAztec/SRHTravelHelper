@@ -1,5 +1,7 @@
 import sqlite3
 import requests
+import serpapi
+from datetime import datetime
 conn = sqlite3.connect("data.db")
 cursor = conn.cursor()
 
@@ -9,6 +11,7 @@ cursor.execute('''
     dep_air TEXT,
     arr_air TEXT,
     flight_id TEXT
+    
     )
 ''')
 cursor.execute('''
@@ -56,5 +59,30 @@ def getJopa(base):
     finaldata = data
     return finaldata
 
+def requestAirports():
+    depAir = input("Enter departue airport(CODE): ")
+    arrAir = input("Enter arriving airport(CODE): ")
+    valid_date = False
+    while valid_date == False:
+        print("--------")
+        right_format = "%d-%m-%Y"
+        today = datetime.today()
+        formatedDate = today.strftime("%d-%m-%Y")
+        print(f"Current date: {formatedDate}")
+        dateOfDep = input("Enter date when you wish to fly(DD-MM-YYYY): ")
+        try:
+            if datetime.strptime(dateOfDep, right_format):
+                valid_date = True
+                print("The system is searching for ticket")
+                break
+        except ValueError:
+            print("Wrong date. Try again")
+    list_of_data = [depAir, arrAir, dateOfDep]
+    return list_of_data
+
+
 print("Welcome to JOPA")
-choice = int(input("Enter departue airport(CODE)"))
+data = requestAirports()
+depAir = data[0]
+arrAir = data[1]
+date_of_dep = data[3]
