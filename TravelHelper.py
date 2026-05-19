@@ -1,13 +1,14 @@
 import sqlite3
-conn = sqlite3.connect("database.db")
+import requests
+conn = sqlite3.connect("data.db")
 cursor = conn.cursor()
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS flights (
-    flight_number INTEGER PRIMARY KEY AUTOINCREMENT,
+    flight_date INTEGER PRIMARY KEY AUTOINCREMENT,
     dep_air TEXT,
     arr_air TEXT,
-    flight_date TEXT
+    flight_id TEXT
     )
 ''')
 cursor.execute('''
@@ -17,5 +18,43 @@ cursor.execute('''
     train_date TEXT
     )
 ''')
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS buses (
+    bus_number INTEGER PRIMARY KEY AUTOINCREMENT,
+    bus_station TEXT,
+    bus_date TEXT
+    )
+''')
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS hotelist (
+    hotelNumber INTEGER PRIMARY KEY AUTOINCREMENT,
+    hotelName TEXT,
+    hotelAdress TEXT,
+    Price for one night INTEGER
+    )
+''')
+
 conn.commit()
-conn.close()
+
+flightBase = ""
+transferBase = ""
+hotelBase = ""
+
+def get_json(url, params=None, headers=None):
+    response = requests.get(
+        url,
+        params=params,
+        headers=headers,
+        timeout=30 # fail fast if API is unresponsive
+    )
+    response.raise_for_status() 
+    return response.json()
+
+def getJopa(base):
+    url = f"{base}.json"
+    data = get_json(url, params={"limit": 100})
+    finaldata = data
+    return finaldata
+
+print("Welcome to JOPA")
+choice = int(input("Enter departue airport(CODE)"))
