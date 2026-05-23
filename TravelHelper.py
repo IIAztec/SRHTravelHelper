@@ -37,18 +37,17 @@ conn.close()
 
 def find_accommodation(destination, check_in, check_out):
     hotel_search_results = client.search({
-      "engine": "google_hotels",
-      "q": destination,
-      "check_in_date": check_in,
-      "check_out_date": check_out,
+        "engine": "google_hotels",
+        "q": destination,
+        "check_in_date": check_in,
+        "check_out_date": check_out,
     })
     properties = hotel_search_results["properties"]
     for i in properties:
         cursor.execute('''
-        INSERT INTO hotels (token, name, latitude, longitude, check_in, check_out, per_night)
-        VALUES(?, ?, ?, ?, ?, ?, ?)'''), i["property_token"], i["name"], i["gps_coordinates"]["latitude"], i["gps_coordinates"]["longitude"], i["check_in_time"], i["check_out_time"], i["rent_per_night"]["extracted_lowest"]
-        cursor.commit()
-        cursor.close()
+        INSERT INTO hotelist (hotelToken, hotelName, hotelLaditude, hotelLongitude, timeOfCheckIn, timeOfCheckOut, PriceForOneNight)
+        VALUES(?, ?, ?, ?, ?, ?, ?)''', (i["property_token"], i["name"], i["gps_coordinates"]["latitude"], i["gps_coordinates"]["longitude"], i["check_in_time"], i["check_out_time"], i["rate_per_night"]["lowest"]))
+        conn.commit()
 
 def show_accommodation(destination, check_in, check_out):
     cursor.executemany('''
