@@ -86,18 +86,17 @@ def requestAirports():
     list_of_data = {"depair": depAir, "arrAir": arrAir, "dateOfDep": dateOfDep}
     return list_of_data
 
-def loadDataToBase(json):
-    listoftick = [
-        json[0]["flights"][0]["flight_number"], 
-        json[0]["flights"][0]["departure_airport"]["time"][:10],
-        json[0]["flights"][0]["airline"], 
-        json[0]["flights"][0]["departure_airport"]["id"], 
-        json[0]["flights"][0]["arrival_airport"]["id"], 
-        # json["booking_token"]
-    ]
-    cursor.execute("INSERT INTO flights (flight_ID, flight_date, flight_company, dep_air, arr_air, booking_token) VALUES (?, ?, ?, ?, ?, ?, ?) ", listoftick)
+def loadDataToBase(flights_list):
+    flight = flights_list[0]["flights"][0]
+    listoftick = (
+        flight["flight_number"],
+        flight["departure_airport"]["time"][:10],
+        flight["airline"],
+        flight["departure_airport"]["id"],
+        flight["arrival_airport"]["id"],
+    )
+    cursor.execute("INSERT INTO flights (flight_ID, flight_date, flight_company, dep_air, arr_air) VALUES (?, ?, ?, ?, ?)", listoftick)
     conn.commit()
-    conn.close()
 
 def requestAirAPI(dep, arr, date):
     results = client.search({
@@ -108,7 +107,8 @@ def requestAirAPI(dep, arr, date):
     "type": "2",
     "outbound_date": date
     })
-    best_flights= results["best_flights"]
+    best_flights = results["best_flights"]
+    return best_flights
 
 
 # def printAvailibleflights(json):
@@ -118,5 +118,5 @@ def requestAirAPI(dep, arr, date):
 print("Welcome to JOPA")
 data = requestAirports()
 tickets = requestAirAPI(data["depair"], data["arrAir"], data["dateOfDep"])
-# loadDataToBase(tickets)
+loadDataToBase(tickets)
 print(tickets)
