@@ -65,6 +65,51 @@ def getAPIData(base):
     finaldata = data
     return finaldata
 
+def myTextFormat(text, length=20):
+    if len(text) > length:
+        return text[:length-3] + "..."
+    else:
+        return text + " " * (length - len(text))
+
+def searchInDBHotels(destination, check_in, check_out):
+    cursor.execute('''
+        SELECT hotelToken FROM hotelist WHERE hotelDestination = ? AND request_date = ?
+                    ''', (destination, datetime.today().strftime("%Y-%m-%d")))
+    hotelTokens = cursor.fetchall()
+    index = 0
+    while index < len(hotelTokens):
+        if hotelTokens[index][0].find(check_in) == -1 or hotelTokens[index][0].find(check_out) == -1:
+            hotelTokens.remove(hotelTokens[index])
+        else:
+            index += 1
+    return hotelTokens
+
+def find_accommodation(destination, check_in, check_out):
+    hotel_search_results = client.search({
+        "engine": "google_hotels",
+        "q": destination,
+        "check_in_date": check_in,
+        "check_out_date": check_out,
+    })
+    properties = hotel_search_results["properties"]
+    for i in properties:
+        try:
+            hotel_data = (i["property_token"]+check_in+check_out, destination, datetime.today().strftime("%Y-%m-%d"), i["name"], i["gps_coordinates"]["latitude"], i["gps_coordinates"]["longitude"], i["check_in_time"], i["check_out_time"], i["rate_per_night"]["lowest"],)
+            cursor.execute('''
+            INSERT INTO hotelist (hotelToken, hotelDestination, request_date, hotelName, hotelLaditude, hotelLongitude, timeOfCheckIn, timeOfCheckOut, PriceForOneNight)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''', hotel_data)
+            conn.commit()
+        except KeyError:
+            continue
+
+def show_accommodation(destination, check_in, check_out):
+    cursor.execute('''SELECT * FROM hotelist
+                    WHERE hotelDestination = ? AND hotelToken LIKE ? AND request_date = ?''', (destination, f"%{check_in}{check_out}%", datetime.today().strftime("%Y-%m-%d")))
+    records = cursor.fetchall()
+    print("________Name________ | Latitude | Longitude | Check-in | Check-out | Price for one night")
+    for record in records:
+        print(myTextFormat(record[3]), "|", myTextFormat(str(record[6]), 8), "|", myTextFormat(str(record[7]), 9), "|", myTextFormat(record[4], 8), "|", myTextFormat(record[5], 9), "|", myTextFormat(str(record[8]), 6))
+
 def requestAirports():
     depAir = input("Enter departue airport(CODE): ")
     arrAir = input("Enter arriving airport(CODE): ")
