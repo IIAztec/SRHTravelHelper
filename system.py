@@ -9,30 +9,21 @@ cursor = conn.cursor()
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS flights (
     flight_ID TEXT PRIMARY KEY,
+    request_date TEXT,
     flight_date TEXT,
     flight_company TEXT,
     dep_air TEXT,
     arr_air TEXT,
-    booking_token
-    )
-''')
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS trains (
-    train_number INTEGER PRIMARY KEY AUTOINCREMENT,
-    train_station TEXT,
-    train_date TEXT
-    )
-''')
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS buses (
-    bus_number INTEGER PRIMARY KEY AUTOINCREMENT,
-    bus_station TEXT,
-    bus_date TEXT
+    layover_air TEXT,
+    priceEUR TEXT,
+    booking_token TEXT
     )
 ''')
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS hotelist (
     hotelToken TEXT PRIMARY KEY,
+    hotelDestination TEXT,
+    request_date TEXT,
     hotelName TEXT,
     timeOfCheckIn TEXT,
     timeOfCheckOut TEXT,
@@ -45,70 +36,17 @@ cursor.execute('''
 
 conn.commit()
 
-flightBase = ""
-transferBase = ""
-hotelBase = ""
+def currentDate():
+    today = datetime.today()
+    formatedDate = today.strftime("%Y-%m-%d")
+    return formatedDate
 
-def get_json(url, params=None, headers=None):
-    response = requests.get(
-        url,
-        params=params,
-        headers=headers,
-        timeout=30 # fail fast if API is unresponsive
-    )
-    response.raise_for_status() 
-    return response.json()
+def checkSameDateForFlights():
+    cursor.execute("SELECT request_date, dep_air, arr_air FROM flights")
+    exists_data = cursor.fetchall()
+    print(exists_data)
+    conn.commit()
 
-def getAPIData(base):
-    url = f"{base}.json"
-    data = get_json(url, params={"limit": 100})
-    finaldata = data
-    return finaldata
-
-def myTextFormat(text, length=20):
-    if len(text) > length:
-        return text[:length-3] + "..."
-    else:
-        return text + " " * (length - len(text))
-
-def searchInDBHotels(destination, check_in, check_out):
-    cursor.execute('''
-        SELECT hotelToken FROM hotelist WHERE hotelDestination = ? AND request_date = ?
-                    ''', (destination, datetime.today().strftime("%Y-%m-%d")))
-    hotelTokens = cursor.fetchall()
-    index = 0
-    while index < len(hotelTokens):
-        if hotelTokens[index][0].find(check_in) == -1 or hotelTokens[index][0].find(check_out) == -1:
-            hotelTokens.remove(hotelTokens[index])
-        else:
-            index += 1
-    return hotelTokens
-
-def find_accommodation(destination, check_in, check_out):
-    hotel_search_results = client.search({
-        "engine": "google_hotels",
-        "q": destination,
-        "check_in_date": check_in,
-        "check_out_date": check_out,
-    })
-    properties = hotel_search_results["properties"]
-    for i in properties:
-        try:
-            hotel_data = (i["property_token"]+check_in+check_out, destination, datetime.today().strftime("%Y-%m-%d"), i["name"], i["gps_coordinates"]["latitude"], i["gps_coordinates"]["longitude"], i["check_in_time"], i["check_out_time"], i["rate_per_night"]["lowest"],)
-            cursor.execute('''
-            INSERT INTO hotelist (hotelToken, hotelDestination, request_date, hotelName, hotelLaditude, hotelLongitude, timeOfCheckIn, timeOfCheckOut, PriceForOneNight)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)''', hotel_data)
-            conn.commit()
-        except KeyError:
-            continue
-
-def show_accommodation(destination, check_in, check_out):
-    cursor.execute('''SELECT * FROM hotelist
-                    WHERE hotelDestination = ? AND hotelToken LIKE ? AND request_date = ?''', (destination, f"%{check_in}{check_out}%", datetime.today().strftime("%Y-%m-%d")))
-    records = cursor.fetchall()
-    print("________Name________ | Latitude | Longitude | Check-in | Check-out | Price for one night")
-    for record in records:
-        print(myTextFormat(record[3]), "|", myTextFormat(str(record[6]), 8), "|", myTextFormat(str(record[7]), 9), "|", myTextFormat(record[4], 8), "|", myTextFormat(record[5], 9), "|", myTextFormat(str(record[8]), 6))
 
 def requestAirports():
     depAir = input("Enter departue airport(CODE): ")
@@ -135,13 +73,27 @@ def loadDataToBase(flights_list):
     flight = flights_list[0]["flights"][0]
     listoftick = (
         flight["flight_number"],
+        currentDate(),
         flight["departure_airport"]["time"][:10],
         flight["airline"],
         flight["departure_airport"]["id"],
         flight["arrival_airport"]["id"],
+        int(flights_list[0]["price"]),
     )
-    cursor.execute("INSERT INTO flights (flight_ID, flight_date, flight_company, dep_air, arr_air) VALUES (?, ?, ?, ?, ?)", listoftick)
+    cursor.execute("INSERT INTO flights (flight_ID, request_date, flight_date, flight_company, dep_air, arr_air, priceEUR) VALUES (?, ?, ?, ?, ?, ?, ?)", listoftick)
     conn.commit()
+
+# def loadPriceToData(flight_list):
+#     price = flight_list[0]
+#     pricelist = (
+#         int(price["price"]),
+#     )
+#     cursor.execute("INSERT INTO flights (priceEUR) VALUES (?)", pricelist)
+#     conn.commit()
+
+def loadLayOverAir(fligt_list):
+    air = fligt_list[0]["flights"]["layovers"][0]
+
 
 def requestAirAPI(dep, arr, date):
     results = client.search({
@@ -164,4 +116,5 @@ print("Welcome to JOPA")
 data = requestAirports()
 tickets = requestAirAPI(data["depair"], data["arrAir"], data["dateOfDep"])
 loadDataToBase(tickets)
-print(tickets)
+# loadPriceToData(tickets)
+checkSameDateForFlights()
