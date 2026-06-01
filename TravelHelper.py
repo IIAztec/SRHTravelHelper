@@ -69,16 +69,17 @@ def checkCity(city):
     return False
 
 def genInput(tr_type = "ret"):
-    depAir = input("Enter departure city: ")
-    while checkCity(depAir) == False:
-        print("City not found. Please try again.")
+    if not tr_type == "hotel_only":
         depAir = input("Enter departure city: ")
+        while checkCity(depAir) == False:
+            print("City not found. Please try again.")
+            depAir = input("Enter departure city: ")
     arrAir = input("Enter arrival city: ")
     while checkCity(arrAir) == False:
         print("City not found. Please try again.")
         arrAir = input("Enter arrival city: ")
     valid_date = False
-    while valid_date == False and :
+    while valid_date == False:
         print("--------")
         right_format = "%Y-%m-%d"
         today = datetime.today()
@@ -182,7 +183,7 @@ def menu():
         print("4. Exit")
         choice = input("Please enter your choice (1-4): ")
         if choice>="1" and choice<"4":
-            tr_dat = genInput("ret" if choice == "3" else "oneway")
+            tr_dat = genInput("ret" if choice == "3" else "hotel_only" if choice == "2" else "one way")
         match choice:
             case "1":
                 best_flights = requestAirAPI(cityToCode(tr_dat["depAir"]), cityToCode(tr_dat["arrAir"]), tr_dat["dateOfDep"])
