@@ -79,14 +79,34 @@ def currentDate():
     formatedDate = today.strftime("%Y-%m-%d")
     return formatedDate
 
+def dateInput(msg):
+    valid_date = False
+    while valid_date == False:
+        print("--------")
+        right_format = "%Y-%m-%d"
+        today = datetime.today()
+        print("Today's date is:", today.strftime(right_format))    
+        newDate = input(f"Enter date of {msg} (YYYY-MM-DD): ")
+        try:
+            user_date = datetime.strptime(newDate, right_format)
+            if user_date < today:
+                print("Date cannot be in the past. Please try again.")
+            else:
+                valid_date = True
+        except ValueError:
+            print("Invalid date format. Please try again.")
+    return newDate
+
+
 def checkSameDateForFlights():
     cursor.execute("SELECT request_date, flight_date, dep_air, arr_air FROM flights")
     exists_data = cursor.fetchall()
     conn.commit()
     return exists_data
 
-def printAvalibleTickets():
-    cursor.execute("SELECT flight_date, dep_air, arr_air, layover_air, priceEUR FROM flights")
+def printAvalibleTickets(flightDate, depAir, arrAir):
+    cursor.execute('''SELECT flight_date, dep_air, arr_air, layover_air, priceEUR FROM flights 
+                   WHERE flight_date = ? AND dep_air = ? AND arr_air = ?''', (flightDate, depAir, arrAir,))
     exists_data = cursor.fetchall()
     conn.commit()
     for i in exists_data:
@@ -104,67 +124,23 @@ def show_accommodation(destination, check_in, check_out): # Kostya
     for record in records:
         print(myTextFormat(record[3]), "|", myTextFormat(str(record[6]), 8), "|", myTextFormat(str(record[7]), 9), "|", myTextFormat(record[4], 8), "|", myTextFormat(record[5], 9), "|", myTextFormat(str(record[8]), 6))
 
-
-# def requestAirports():
-#     depAir = input("Enter departue airport(CODE): ")
-#     arrAir = input("Enter arriving airport(CODE): ")
-#     valid_date = False
-#     while valid_date == False:
-#         print("--------")
-#         right_format = "%Y-%m-%d"
-#         today = datetime.today()
-#         formatedDate = today.strftime("%Y-%m-%d")
-#         print(f"Current date: {formatedDate}")
-#         dateOfDep = input("Enter date when you wish to fly(YYYY-MM-DD): ")
-#         try:
-#             if datetime.strptime(dateOfDep, right_format):
-#                 valid_date = True
-#                 print("The system is searching for ticket")
-#                 break
-#         except ValueError:
-#             print("Wrong date. Try again")
-#     list_of_data = {"depAir": depAir, "arrAir": arrAir, "dateOfDep": dateOfDep}
-#     return list_of_data
-
 def genInput(tr_type = "ret"):
-    depAir = input("Enter departure city: ")
-    while checkCity(depAir) == False:
-        print("City not found. Please try again.")
+    if tr_type == "hotel_only":
+        depAir = None
+    else:
         depAir = input("Enter departure city: ")
+        while checkCity(depAir) == False:
+            print("City not found. Please try again.")
+            depAir = input("Enter departure city: ")
     arrAir = input("Enter arrival city: ")
     while checkCity(arrAir) == False:
         print("City not found. Please try again.")
         arrAir = input("Enter arrival city: ")
-    valid_date = False
-    while valid_date == False:
-        print("--------")
-        right_format = "%Y-%m-%d"
-        today = datetime.today()
-        print("Today's date is:", today.strftime(right_format))    
-        dateOfDep = input("Enter date of departure (YYYY-MM-DD): ")
-        try:
-            dep_date = datetime.strptime(dateOfDep, right_format)
-            if dep_date < today:
-                print("Date cannot be in the past. Please try again.")
-            else:
-                valid_date = True
-        except ValueError:
-            print("Invalid date format. Please try again.")
-    valid_date = False
-    while valid_date == False:
-        print("--------")
-        right_format = "%Y-%m-%d"
-        today = datetime.today()
-        print("Today's date is:", today.strftime(right_format))    
-        dateOfReturn = input("Enter date of return (YYYY-MM-DD): ")
-        try:
-            ret_date = datetime.strptime(dateOfReturn, right_format)
-            if ret_date < today:
-                print("Date cannot be in the past. Please try again.")
-            else:
-                valid_date = True
-        except ValueError:
-            print("Invalid date format. Please try again.")
+    dateOfDep = dateInput("departue")
+    if tr_type == "one_way":
+        dateOfReturn = None
+    else:
+        dateOfReturn = dateInput("return")
     return {"depAir": depAir, "arrAir": arrAir, "dateOfDep": dateOfDep, "dateOfReturn": dateOfReturn}
 
 def loadDataToBase(flights_list):
@@ -212,19 +188,17 @@ def requestAirAPI(dep, arr, date):
     return best_flights
 
 def findOneWayFlights(data):
-    exists_data = checkSameDateForFlights()
-    if exists_data != []:
-        for i in exists_data:
-            if not (i[0] == currentDate() and i[1] == data["dateOfDep"] and i[2] == data["depAir"] and i[3] == data["arrAir"]):
-                tickets = requestAirAPI(cityToCode(data["depAir"]), cityToCode(data["arrAir"]), data["dateOfDep"])
-                loadDataToBase(tickets)
-                printAvalibleTickets()
-            else:
-                print("AMOGUS")
-    else:
-        tickets = requestAirAPI(cityToCode(data["depAir"]), cityToCode(data["arrAir"]), data["dateOfDep"])
-        loadDataToBase(tickets)
-        printAvalibleTickets()
+    found = False
+    existing_data = checkSameDateForFlights()
+    i = 0
+    while not found and i < len(existing_data):
+        if (existing_data[i][0] == currentDate() and existing_data[i][1] == data["dateOfDep"] and existing_data[i][2] == cityToCode(data["depAir"]) and existing_data[i][3] == cityToCode(data["arrAir"])):
+                printAvalibleTickets(data["dateOfDep"], cityToCode(data["depAir"]), cityToCode(data["arrAir"]))
+                return
+        i+=1  
+    tickets = requestAirAPI(cityToCode(data["depAir"]), cityToCode(data["arrAir"]), data["dateOfDep"])
+    loadDataToBase(tickets)
+    printAvalibleTickets(data["dateOfDep"], cityToCode(data["depAir"]), cityToCode(data["arrAir"]))
 
 def find_accommodation(destination, check_in, check_out): # Kostya
     hotel_search_results = client.search({
@@ -251,12 +225,12 @@ def menu():
         print("3. Search for a round-trip flight and a hotel")
         print("4. Exit")
         choice = input("Please enter your choice (1-4): ")
-        if choice>="1" and choice<"4":
-            tr_dat = genInput("ret" if choice == "3" else "hotel_only" if choice == "2" else "one way")
         match choice:
             case "1":
+                tr_dat = genInput("one_way")
                 findOneWayFlights(tr_dat)
             case "2":
+                tr_dat = genInput("hotel_only")
                 destination = tr_dat["arrAir"] 
                 check_in = tr_dat["dateOfDep"]
                 check_out = tr_dat["dateOfReturn"]
@@ -267,6 +241,7 @@ def menu():
                     print("DEV: Hotel data already exists in the database.")
                 show_accommodation(destination, check_in, check_out)
             case "3":
+                tr_dat = genInput("ret")
                 destination = tr_dat["arrAir"] 
                 check_in = tr_dat["dateOfDep"]
                 check_out = tr_dat["dateOfReturn"] 
@@ -283,5 +258,6 @@ def menu():
             case _:
                 print("Invalid choice. Please try again.")
     conn.close()
+
 
 menu()
