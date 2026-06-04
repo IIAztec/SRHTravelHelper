@@ -104,8 +104,9 @@ def checkSameDateForFlights():
     conn.commit()
     return exists_data
 
-def printAvalibleTickets():
-    cursor.execute("SELECT flight_date, dep_air, arr_air, layover_air, priceEUR FROM flights")
+def printAvalibleTickets(flightDate, depAir, arrAir):
+    cursor.execute('''SELECT flight_date, dep_air, arr_air, layover_air, priceEUR FROM flights 
+                   WHERE flight_date = ? AND dep_air = ? AND arr_air = ?''', (flightDate, depAir, arrAir,))
     exists_data = cursor.fetchall()
     conn.commit()
     for i in exists_data:
@@ -122,28 +123,6 @@ def show_accommodation(destination, check_in, check_out): # Kostya
     print("________Name________ | Latitude | Longitude | Check-in | Check-out | Price for one night")
     for record in records:
         print(myTextFormat(record[3]), "|", myTextFormat(str(record[6]), 8), "|", myTextFormat(str(record[7]), 9), "|", myTextFormat(record[4], 8), "|", myTextFormat(record[5], 9), "|", myTextFormat(str(record[8]), 6))
-
-
-# def requestAirports():
-#     depAir = input("Enter departue airport(CODE): ")
-#     arrAir = input("Enter arriving airport(CODE): ")
-#     valid_date = False
-#     while valid_date == False:
-#         print("--------")
-#         right_format = "%Y-%m-%d"
-#         today = datetime.today()
-#         formatedDate = today.strftime("%Y-%m-%d")
-#         print(f"Current date: {formatedDate}")
-#         dateOfDep = input("Enter date when you wish to fly(YYYY-MM-DD): ")
-#         try:
-#             if datetime.strptime(dateOfDep, right_format):
-#                 valid_date = True
-#                 print("The system is searching for ticket")
-#                 break
-#         except ValueError:
-#             print("Wrong date. Try again")
-#     list_of_data = {"depAir": depAir, "arrAir": arrAir, "dateOfDep": dateOfDep}
-#     return list_of_data
 
 def genInput(tr_type = "ret"):
     if tr_type == "hotel_only":
@@ -209,19 +188,17 @@ def requestAirAPI(dep, arr, date):
     return best_flights
 
 def findOneWayFlights(data):
-    exists_data = checkSameDateForFlights()
-    if exists_data != []:
-        for i in exists_data:
-            if not (i[0] == currentDate() and i[1] == data["dateOfDep"] and i[2] == data["depAir"] and i[3] == data["arrAir"]):
-                tickets = requestAirAPI(cityToCode(data["depAir"]), cityToCode(data["arrAir"]), data["dateOfDep"])
-                loadDataToBase(tickets)
-                printAvalibleTickets()
-            else:
-                print("AMOGUS")
-    else:
-        tickets = requestAirAPI(cityToCode(data["depAir"]), cityToCode(data["arrAir"]), data["dateOfDep"])
-        loadDataToBase(tickets)
-        printAvalibleTickets()
+    found = False
+    existing_data = checkSameDateForFlights()
+    i = 0
+    while not found and i < len(existing_data):
+        if (existing_data[i][0] == currentDate() and existing_data[i][1] == data["dateOfDep"] and existing_data[i][2] == cityToCode(data["depAir"]) and existing_data[i][3] == cityToCode(data["arrAir"])):
+                printAvalibleTickets(data["dateOfDep"], cityToCode(data["depAir"]), cityToCode(data["arrAir"]))
+                return
+        i+=1  
+    tickets = requestAirAPI(cityToCode(data["depAir"]), cityToCode(data["arrAir"]), data["dateOfDep"])
+    loadDataToBase(tickets)
+    printAvalibleTickets(data["dateOfDep"], cityToCode(data["depAir"]), cityToCode(data["arrAir"]))
 
 def find_accommodation(destination, check_in, check_out): # Kostya
     hotel_search_results = client.search({
