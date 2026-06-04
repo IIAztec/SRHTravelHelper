@@ -207,8 +207,12 @@ def requestAirAPI(dep, arr, date):
     "type": "2",
     "outbound_date": date
     })
-    best_flights = results["best_flights"]
-    return best_flights
+    try:
+        best_flights = results["best_flights"]
+        return best_flights
+    except KeyError:
+        print("No data was found. Please, try again later")
+        exit()
 
 def findOneWayFlights(data):
     found = False
