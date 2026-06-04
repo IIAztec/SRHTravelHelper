@@ -61,6 +61,9 @@ def checkCity(city): # Kostya
     for line in airport_codes:
         if line.split(',')[0] == city:
             return True
+    for line in airport_codes:
+        if city in line:
+            return True
     return False
 
 def searchInDBHotels(destination, check_in, check_out): # Kostya
