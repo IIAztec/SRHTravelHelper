@@ -113,6 +113,7 @@ def printAvalibleTickets(flightDate, depAir, arrAir):
     print("Date of departure | Departure airport | Arrival airport | Layovers | Price")
     for i in exists_data:
         print(myTextFormat(i[0], 17), "|", myTextFormat(i[1], 17), "|", myTextFormat(i[2], 15), "|", myTextFormat(i[3], 8), "|", myTextFormat(i[4], 5))
+    print()
 
 def show_accommodation(destination, check_in, check_out): # Kostya
     cursor.execute('''SELECT * FROM hotelist
@@ -121,6 +122,7 @@ def show_accommodation(destination, check_in, check_out): # Kostya
     print("________Name________ | Latitude | Longitude | Check-in | Check-out | Price for one night")
     for record in records:
         print(myTextFormat(record[3]), "|", myTextFormat(str(record[6]), 8), "|", myTextFormat(str(record[7]), 9), "|", myTextFormat(record[4], 8), "|", myTextFormat(record[5], 9), "|", myTextFormat(str(record[8]), 6))
+    print()
 
 # def requestAirports():
 #     depAir = input("Enter departue airport(CODE): ")
