@@ -20,6 +20,8 @@ cursor.execute('''
     primary_token TEXT PRIMARY KEY
     )
 ''')
+conn.commit()
+
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS hotelist (
     hotelToken TEXT PRIMARY KEY,
@@ -59,6 +61,9 @@ def checkCity(city): # Kostya
     for line in airport_codes:
         if line.split(',')[0] == city:
             return True
+    for line in airport_codes:
+        if city in line:
+            return True
     return False
 
 def searchInDBHotels(destination, check_in, check_out): # Kostya
@@ -97,9 +102,8 @@ def dateInput(msg):
             print("Invalid date format. Please try again.")
     return newDate
 
-
 def checkSameDateForFlights():
-    cursor.execute("SELECT request_date, flight_date, dep_air, arr_air FROM flights")
+    cursor.execute("SELECT request_date, flight_date, dep_air, arr_air, layover_air, priceEUR FROM flights")
     exists_data = cursor.fetchall()
     conn.commit()
     return exists_data
@@ -109,20 +113,40 @@ def printAvalibleTickets(flightDate, depAir, arrAir):
                    WHERE flight_date = ? AND dep_air = ? AND arr_air = ?''', (flightDate, depAir, arrAir,))
     exists_data = cursor.fetchall()
     conn.commit()
+    print("Date of departure | Departure airport | Arrival airport | Layovers | Price")
     for i in exists_data:
-        print(f"Date of departue: {i[0]}")
-        print(f"Departue airport: {i[1]}")
-        print(f"Arrival airport: {i[2]}")
-        print(f"List of layover airports: {i[3]}")
-        print(f"Price in EUR: {i[4]}")
+        print(myTextFormat(i[0], 17), "|", myTextFormat(i[1], 17), "|", myTextFormat(i[2], 15), "|", myTextFormat(i[3], 8), "|", myTextFormat(i[4], 5))
+    print()
 
 def show_accommodation(destination, check_in, check_out): # Kostya
     cursor.execute('''SELECT * FROM hotelist
-                    WHERE hotelDestination = ? AND hotelToken LIKE ? AND request_date = ?''', (destination, f"%{check_in}{check_out}%", datetime.today().strftime("%Y-%m-%d")))
+                    WHERE hotelDestination = ? AND hotelToken LIKE ? AND request_date = ?''', (destination, f"%{check_in}{check_out}%", datetime.today().strftime("%Y-%m-%d"),))
     records = cursor.fetchall()
     print("________Name________ | Latitude | Longitude | Check-in | Check-out | Price for one night")
     for record in records:
         print(myTextFormat(record[3]), "|", myTextFormat(str(record[6]), 8), "|", myTextFormat(str(record[7]), 9), "|", myTextFormat(record[4], 8), "|", myTextFormat(record[5], 9), "|", myTextFormat(str(record[8]), 6))
+    print()
+
+# def requestAirports():
+#     depAir = input("Enter departue airport(CODE): ")
+#     arrAir = input("Enter arriving airport(CODE): ")
+#     valid_date = False
+#     while valid_date == False:
+#         print("--------")
+#         right_format = "%Y-%m-%d"
+#         today = datetime.today()
+#         formatedDate = today.strftime("%Y-%m-%d")
+#         print(f"Current date: {formatedDate}")
+#         dateOfDep = input("Enter date when you wish to fly(YYYY-MM-DD): ")
+#         try:
+#             if datetime.strptime(dateOfDep, right_format):
+#                 valid_date = True
+#                 print("The system is searching for ticket")
+#                 break
+#         except ValueError:
+#             print("Wrong date. Try again")
+#     list_of_data = {"depAir": depAir, "arrAir": arrAir, "dateOfDep": dateOfDep}
+#     return list_of_data
 
 def genInput(tr_type = "ret"):
     if tr_type == "hotel_only":
@@ -172,8 +196,7 @@ def loadDataToBase(flights_list):
                 str(random.random()),
             )
         cursor.execute("INSERT INTO flights (flight_ID, request_date, flight_date, flight_company, dep_air, arr_air, layover_air, priceEUR, primary_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", listoftick)
-        conn.commit()
-        
+        conn.commit()        
 
 def requestAirAPI(dep, arr, date):
     results = client.search({
@@ -184,8 +207,12 @@ def requestAirAPI(dep, arr, date):
     "type": "2",
     "outbound_date": date
     })
-    best_flights = results["best_flights"]
-    return best_flights
+    try:
+        best_flights = results["best_flights"]
+        return best_flights
+    except KeyError:
+        print("No data was found. Please, try again later")
+        exit()
 
 def findOneWayFlights(data):
     found = False
@@ -206,6 +233,7 @@ def find_accommodation(destination, check_in, check_out): # Kostya
         "q": destination,
         "check_in_date": check_in,
         "check_out_date": check_out,
+        "currency" : "EUR",
     })
     properties = hotel_search_results["properties"]
     for i in properties:
@@ -258,6 +286,5 @@ def menu():
             case _:
                 print("Invalid choice. Please try again.")
     conn.close()
-
 
 menu()
